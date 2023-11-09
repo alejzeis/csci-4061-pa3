@@ -1,3 +1,9 @@
+# CSCI Project related files
+.cache
+build
+request_log
+image_rotation
+
 # Prerequisites
 *.d
 
