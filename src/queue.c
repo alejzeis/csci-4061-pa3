@@ -9,12 +9,13 @@ ThreadSafeQueue* createTSQueue()
     ThreadSafeQueue *queue = malloc(sizeof(ThreadSafeQueue));
 
     queue->lock = malloc(sizeof(pthread_mutex_t));
-    queue->elementAddedCondition = malloc(sizeof(pthread_cond_t));
+    queue->updatedCondition = malloc(sizeof(pthread_cond_t));
     pthread_mutex_init(queue->lock, NULL);
-    pthread_cond_init(queue->elementAddedCondition, NULL);
+    pthread_cond_init(queue->updatedCondition, NULL);
 
     queue->head = NULL;
     queue->tail = NULL;
+    queue->filled =false;
 
     return queue;
 }
@@ -43,7 +44,7 @@ void TSQueue_add(ThreadSafeQueue *queue, LinkedQueueElement *element)
     }
 
     // Notify any threads listening that a new element has been added
-    pthread_cond_broadcast(queue->elementAddedCondition);
+    pthread_cond_broadcast(queue->updatedCondition);
 
     pthread_mutex_unlock(queue->lock);
 }
@@ -54,6 +55,20 @@ LinkedQueueElement* TSQueue_pop(ThreadSafeQueue *queue)
 
     // Lock the mutex so that only we are modifying the queue
     pthread_mutex_lock(queue->lock);
+
+    poppedElement = TSQueue_popUnsafe(queue);
+
+    // Notify any threads listening that an element was removed
+    pthread_cond_broadcast(queue->updatedCondition);
+
+    pthread_mutex_unlock(queue->lock);
+
+    return poppedElement;
+}
+
+LinkedQueueElement* TSQueue_popUnsafe(ThreadSafeQueue *queue)
+{
+    LinkedQueueElement *poppedElement;
 
     if (queue->head == NULL)
     {
@@ -69,8 +84,6 @@ LinkedQueueElement* TSQueue_pop(ThreadSafeQueue *queue)
        poppedElement->previous = NULL;
     }
 
-    pthread_mutex_unlock(queue->lock);
-
     return poppedElement;
 }
 
@@ -85,7 +98,7 @@ void TSQueue_cleanup(ThreadSafeQueue **queue)
     }
 
     free((*queue)->lock);
-    free((*queue)->elementAddedCondition);
+    free((*queue)->updatedCondition);
     free(*queue);
 
     *queue = NULL;

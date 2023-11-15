@@ -12,7 +12,7 @@
 - **Makefile:** Added additional source file to compile `queue.h`
 
 **Contributions:**
-- Alejandro: `image_rotation.c`, `queue.c/h`
+- Alejandro: `image_rotation.c` (processing thread/main), `queue.c/h`
 - Charlie: `image_rotation.c`
 
 ### Plan

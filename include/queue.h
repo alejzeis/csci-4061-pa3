@@ -39,11 +39,17 @@ typedef struct ThreadSafeQueue_T
    /** Mutex for the queue. Anytime the queue is modified (add/pop) this mutex is locked. */
    pthread_mutex_t *lock;
 
+   /**
+    * Flag set by the processing thread to indicate that the queue was fully
+    * filled with requests, and no more elements will be added.
+    */
+   bool filled;
+
    /** 
     * Condition Variable that is used to signal all threads when 
-    * an element has been added to the queue
+    * an element has been added, removed, or the filled flag has been updated.
     */
-   pthread_cond_t *elementAddedCondition;
+   pthread_cond_t *updatedCondition;
 } ThreadSafeQueue;
 
 ThreadSafeQueue* createTSQueue();
@@ -66,6 +72,18 @@ void TSQueue_add(ThreadSafeQueue *queue, LinkedQueueElement *element);
  * @retval Pointer to the popped element, or NULL if the queue is empty.
  */
 LinkedQueueElement* TSQueue_pop(ThreadSafeQueue *queue);
+
+/**
+ * Pops an element from the head of the queue.
+ * This is the thread-UNSAFE version of TSQueue_pop,
+ * requiring manual manipulation of the queue's lock.
+ *
+ * Ensure the queue's mutex is LOCKED before calling this function!
+ * Unlock the mutex after this function completes.
+ *
+ * @retval Pointer to the popped element, or NULL if the queue is empty.
+ */
+LinkedQueueElement* TSQueue_popUnsafe(ThreadSafeQueue *queue);
 
 /**
  * Cleans up the queue.

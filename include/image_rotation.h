@@ -44,7 +44,10 @@
 
 typedef struct LogFile_T
 {
+    /** File handle for the LogFile. Opened and closed in main() */
     FILE *file;
+
+    /** Mutex for the file handle. Only write to file when this is locked */
     pthread_mutex_t *lock;
 } LogFile;
 

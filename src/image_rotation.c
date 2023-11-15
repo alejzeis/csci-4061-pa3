@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 // TODO: Remove this for final submission
-#define INTERMEDIATE_SUBMISSION
+//#define INTERMEDIATE_SUBMISSION
 
 //Global integer to indicate the length of the queue??
 //Global integer to indicate the number of worker threads
@@ -118,6 +118,13 @@ void *processing(void *args)
             }
         }
 
+        // Queue has been filled with all requests, set the "filled" flag to true,
+        // then broadcast a signal that the queue was updated.
+        pthread_mutex_lock(pArgs->queue->lock);
+        pArgs->queue->filled = true;
+        pthread_cond_broadcast(pArgs->queue->updatedCondition);
+        pthread_mutex_unlock(pArgs->queue->lock);
+
         closedir(dir);
 
         // wait for ALL workers to finish
@@ -156,6 +163,61 @@ void *processing(void *args)
     return NULL;
 }
 
+void processRequest(Worker* thisWorker, LinkedQueueElement request)
+{
+    printf("[%i] Got request %s\n", thisWorker->id, request.file);
+#if 0
+    /*
+        Stbi_load takes:
+            A file name, int pointer for width, height, and bpp
+
+    */
+
+   // uint8_t* image_result = stbi_load("??????","?????", "?????", "???????",  CHANNEL_NUM);
+    
+
+    uint8_t **result_matrix = (uint8_t **)malloc(sizeof(uint8_t*) * width);
+    uint8_t** img_matrix = (uint8_t **)malloc(sizeof(uint8_t*) * width);
+    for(int i = 0; i < width; i++){
+        result_matrix[i] = (uint8_t *)malloc(sizeof(uint8_t) * height);
+        img_matrix[i] = (uint8_t *)malloc(sizeof(uint8_t) * height);
+    }
+    /*
+    linear_to_image takes: 
+        The image_result matrix from stbi_load
+        An image matrix
+        Width and height that were passed into stbi_load
+    
+    */
+    //linear_to_image("??????", "????", "????", "????");
+    
+
+    ////TODO: you should be ready to call flip_left_to_right or flip_upside_down depends on the angle(Should just be 180 or 270)
+    //both take image matrix from linear_to_image, and result_matrix to store data, and width and height.
+    //Hint figure out which function you will call. 
+    //flip_left_to_right(img_matrix, result_matrix, width, height); or flip_upside_down(img_matrix, result_matrix ,width, height);
+
+
+    
+    
+    //uint8_t* img_array = NULL; ///Hint malloc using sizeof(uint8_t) * width * height
+
+
+    ///TODO: you should be ready to call flatten_mat function, using result_matrix
+    //img_arry and width and height; 
+    //flatten_mat("??????", "??????", "????", "???????");
+
+
+    ///TODO: You should be ready to call stbi_write_png using:
+    //New path to where you wanna save the file,
+    //Width
+    //height
+    //img_array
+    //width*CHANNEL_NUM
+   // stbi_write_png("??????", "?????", "??????", CHANNEL_NUM, "??????", "?????"*CHANNEL_NUM);
+#endif
+}
+
 /*
     1: The worker threads takes an int ID as a parameter
 
@@ -178,61 +240,39 @@ void *processing(void *args)
 
 void * worker(void *args)
 {
-
+    bool queueFilled = false;
+    bool queueEmpty = false;
+    LinkedQueueElement *request;
     Worker *thisWorker = (Worker*) args;
 
 #ifndef INTERMEDIATE_SUBMISSION
-
-        // TODO: Implement for final submission
+       
+    do
+    {
+        // Lock queue's mutex to check "filled" flag and call popUnsafe()
+        pthread_mutex_lock(thisWorker->queue->lock);
         
-        /*
-            Stbi_load takes:
-                A file name, int pointer for width, height, and bpp
+        // Pop an element from the queue. Use unsafe pop here because we already have the mutex locked.
+        request = TSQueue_popUnsafe(thisWorker->queue);
+        queueFilled = thisWorker->queue->filled;
 
-        */
+        // Unlock mutex after checking the "filled" flag in loop condition
+        // and popped an element.
+        pthread_mutex_unlock(thisWorker->queue->lock);
 
-       // uint8_t* image_result = stbi_load("??????","?????", "?????", "???????",  CHANNEL_NUM);
-        
-
-        uint8_t **result_matrix = (uint8_t **)malloc(sizeof(uint8_t*) * width);
-        uint8_t** img_matrix = (uint8_t **)malloc(sizeof(uint8_t*) * width);
-        for(int i = 0; i < width; i++){
-            result_matrix[i] = (uint8_t *)malloc(sizeof(uint8_t) * height);
-            img_matrix[i] = (uint8_t *)malloc(sizeof(uint8_t) * height);
+        if (request != NULL)
+        {
+            queueEmpty = false;
+            processRequest(thisWorker, *request);
         }
-        /*
-        linear_to_image takes: 
-            The image_result matrix from stbi_load
-            An image matrix
-            Width and height that were passed into stbi_load
-        
-        */
-        //linear_to_image("??????", "????", "????", "????");
-        
+        else
+        {
+            queueEmpty = true;
+        }
 
-        ////TODO: you should be ready to call flip_left_to_right or flip_upside_down depends on the angle(Should just be 180 or 270)
-        //both take image matrix from linear_to_image, and result_matrix to store data, and width and height.
-        //Hint figure out which function you will call. 
-        //flip_left_to_right(img_matrix, result_matrix, width, height); or flip_upside_down(img_matrix, result_matrix ,width, height);
+        //printf("[%i] Filled %i, Empty %i\n", thisWorker->id, thisWorker->queue->filled, queueEmpty);
+    } while(!queueEmpty || !queueFilled);
 
-
-        
-        
-        //uint8_t* img_array = NULL; ///Hint malloc using sizeof(uint8_t) * width * height
-    
-
-        ///TODO: you should be ready to call flatten_mat function, using result_matrix
-        //img_arry and width and height; 
-        //flatten_mat("??????", "??????", "????", "???????");
-
-
-        ///TODO: You should be ready to call stbi_write_png using:
-        //New path to where you wanna save the file,
-        //Width
-        //height
-        //img_array
-        //width*CHANNEL_NUM
-       // stbi_write_png("??????", "?????", "??????", CHANNEL_NUM, "??????", "?????"*CHANNEL_NUM);
 #else
 
     // For the intermediate submission just print the thread ID and exit
