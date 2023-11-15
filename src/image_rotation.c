@@ -19,6 +19,8 @@
 //How will you track the p_thread's that you create for workers?
 //How will you know where to insert the next request received into the request queue?
 
+// Private function that actually processes a request and does the image rotation
+static void processRequest(Worker* thisWorker, LinkedQueueElement request);
 
 
 Worker* makeWorker(int id, ThreadSafeQueue *queue, LogFile *logFile, char *outputDirPath)
@@ -163,7 +165,7 @@ void *processing(void *args)
     return NULL;
 }
 
-void processRequest(Worker* thisWorker, LinkedQueueElement request)
+static void processRequest(Worker* thisWorker, LinkedQueueElement request)
 {
     printf("[%i] Got request %s\n", thisWorker->id, request.file);
 #if 0
